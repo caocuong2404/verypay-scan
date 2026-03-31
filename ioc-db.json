@@ -1,0 +1,58 @@
+{
+  "version": "2026-03-31",
+  "packages": [
+    {"name": "axios", "versions": ["1.14.1", "0.30.4"], "threat": "RAT dropper via plain-crypto-js", "severity": "critical"},
+    {"name": "plain-crypto-js", "versions": ["*"], "threat": "Cross-platform RAT", "severity": "critical"},
+    {"name": "@ctrl/tinycolor", "versions": ["4.1.1", "4.1.2"], "threat": "Shai-Hulud credential stealer", "severity": "critical"}
+  ],
+  "file_iocs": {
+    "macos": [
+      "/Library/Caches/com.apple.act.mond",
+      "/private/tmp/.??????",
+      "/tmp/.??????.scpt"
+    ],
+    "linux": [
+      "/tmp/ld.py",
+      "/tmp/.??????"
+    ],
+    "windows": [
+      "%PROGRAMDATA%\\wt.exe",
+      "%PROGRAMDATA%\\system.bat",
+      "%TEMP%\\6202033.vbs",
+      "%TEMP%\\6202033.ps1"
+    ]
+  },
+  "network_iocs": {
+    "ips": ["142.11.206.73"],
+    "domains": ["sfrclak.com"],
+    "ports": [8000],
+    "url_paths": ["/6202033"],
+    "post_bodies": ["packages.npm.org/product0", "packages.npm.org/product1", "packages.npm.org/product2"],
+    "user_agent": "mozilla/4.0 (compatible; msie 8.0; windows nt 5.1; trident/4.0)"
+  },
+  "registry_iocs": {
+    "windows": ["HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\MicrosoftUpdate"]
+  },
+  "process_iocs": {
+    "patterns": ["com.apple.act.mond", "ld.py", "nohup.*python3", "system.bat", "node.*setup.js", "osascript.*/tmp"]
+  },
+  "dns_check": {
+    "macos": "dscacheutil -cachedump 2>/dev/null | grep sfrclak",
+    "linux": "grep sfrclak /var/log/syslog 2>/dev/null",
+    "windows": "Get-DnsClientCache | Where-Object Entry -like *sfrclak*"
+  },
+  "content_patterns": {
+    "description": "YARA-equivalent patterns — dropper obfuscation signatures",
+    "patterns": ["_trans_1", "_trans_2", "OrDeR_7077", "sfrclak", "6202033", "packages\\.npm\\.org/product"],
+    "scan_paths": {
+      "npm_cache": ["~/.npm/_cacache/"],
+      "node_modules": ["node_modules/plain-crypto-js/", "node_modules/.package-lock.json"]
+    }
+  },
+  "snort_rules": [
+    "alert tcp any any -> 142.11.206.73 8000 (msg:\"axios RAT C2 connection\"; sid:1000001; rev:1;)",
+    "alert http any any -> any 8000 (msg:\"axios RAT C2 beacon\"; content:\"POST\"; http_method; content:\"sfrclak.com\"; http_header; content:\"packages.npm.org/product\"; http_client_body; sid:1000002; rev:1;)",
+    "alert http any any -> any 8000 (msg:\"axios RAT stage2 download\"; content:\"POST\"; http_method; content:\"/6202033\"; http_uri; sid:1000003; rev:1;)"
+  ],
+  "yara_rule": "rule plain_crypto_js_malware {\n  meta:\n    description = \"Detects plain-crypto-js malware setup.js\"\n    severity = \"critical\"\n    date = \"2026-03-31\"\n  strings:\n    $s1 = \"_trans_1\" ascii\n    $s2 = \"_trans_2\" ascii\n    $s3 = \"OrDeR_7077\" ascii\n    $s4 = \"sfrclak\" ascii nocase\n    $s5 = \"6202033\" ascii\n    $s6 = \"packages.npm.org/product\" ascii\n    $s7 = \"fs.unlink(__filename\" ascii\n  condition:\n    5 of them\n}"
+}

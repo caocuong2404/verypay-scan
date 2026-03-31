@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeryPay Supply Chain Scanner</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #020617;
+  --bg-raised: #0a101f;
+  --surface: #0f172a;
+  --surface-hover: #1a2540;
+  --border: #1e293b;
+  --border-hover: #334155;
+  --text: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --green: #22c55e;
+  --green-muted: rgba(34,197,94,.12);
+  --green-border: rgba(34,197,94,.25);
+  --red: #ef4444;
+  --red-muted: rgba(239,68,68,.08);
+  --red-border: rgba(239,68,68,.2);
+  --blue: #3b82f6;
+  --blue-muted: rgba(59,130,246,.1);
+  --amber: #f59e0b;
+  --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--blue); text-decoration: none; transition: color .2s; }
+a:hover { color: #60a5fa; }
+a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+
+.container { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+/* ========== HERO ========== */
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 80px 24px 56px;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -120px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(34,197,94,.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--green-muted);
+  border: 1px solid var(--green-border);
+  color: var(--green);
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 100px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.hero-badge svg { flex-shrink: 0; }
+.hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+.hero h1 .accent { color: var(--green); }
+.hero .subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+.hero-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin-top: 56px;
+}
+
+/* ========== SECTIONS ========== */
+section { padding: 56px 0; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.section-header .icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.section-header h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ========== THREAT ALERT ========== */
+.threat-alert {
+  background: var(--red-muted);
+  border: 1px solid var(--red-border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+.threat-alert strong { color: var(--red); font-weight: 600; }
+.threat-alert code {
+  background: rgba(0,0,0,.3);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: .875em;
+  color: var(--text);
+}
+.threat-alert .threat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--red-border);
+}
+.threat-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+.threat-meta-item svg { color: var(--red); }
+
+/* ========== COMMAND CARDS ========== */
+.cmd-grid { display: flex; flex-direction: column; gap: 12px; }
+.cmd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  transition: border-color .2s;
+}
+.cmd-card:hover { border-color: var(--border-hover); }
+.cmd-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.cmd-label svg { width: 14px; height: 14px; opacity: .7; }
+.cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cmd-row code {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: .84rem;
+  background: var(--bg);
+  padding: 11px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--green);
+  border: 1px solid var(--border);
+}
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 500;
+  font-family: var(--sans);
+  white-space: nowrap;
+  transition: all .2s;
+}
+.copy-btn:hover { background: var(--blue-muted); color: var(--blue); border-color: rgba(59,130,246,.3); }
+.copy-btn.copied { background: var(--green-muted); color: var(--green); border-color: var(--green-border); }
+.copy-btn svg { width: 14px; height: 14px; }
+
+/* ========== CHECK GRID ========== */
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.check-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  transition: border-color .2s, transform .2s;
+  cursor: default;
+}
+.check-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+.check-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.check-icon.layer-1 { background: rgba(34,197,94,.1); color: var(--green); }
+.check-icon.layer-2 { background: rgba(245,158,11,.1); color: var(--amber); }
+.check-icon.layer-3 { background: rgba(59,130,246,.1); color: var(--blue); }
+.check-icon.layer-4 { background: rgba(168,85,247,.1); color: #a855f7; }
+.check-num {
+  font-family: var(--mono);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.check-title {
+  font-size: .95rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.check-desc {
+  font-size: .8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ========== PCI TABLE ========== */
+.pci-table-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+.pci-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+}
+.pci-table th {
+  text-align: left;
+  padding: 12px 16px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.pci-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.pci-table tr:last-child td { border-bottom: none; }
+.pci-table td:first-child {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--blue);
+  white-space: nowrap;
+  font-size: .8rem;
+}
+.pci-table tr:hover td { background: rgba(255,255,255,.015); }
+
+/* ========== CTA BOX ========== */
+.cta-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  text-align: center;
+  transition: border-color .2s;
+}
+.cta-box:hover { border-color: var(--border-hover); }
+.cta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+}
+.cta-link svg { transition: transform .2s; }
+.cta-link:hover svg { transform: translateX(3px); }
+.cta-box p { color: var(--text-muted); margin-top: 8px; font-size: .85rem; }
+
+/* ========== HOW-TO GUIDE ========== */
+.howto-steps {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.howto-step {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.howto-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: var(--green-muted);
+  border: 1px solid var(--green-border);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: .75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.howto-text { font-size: .82rem; color: var(--text-secondary); line-height: 1.6; }
+.howto-text strong { color: var(--text); font-weight: 600; }
+.howto-text .kbd {
+  display: inline-block;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-hover);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: .78em;
+  color: var(--text);
+  line-height: 1.4;
+}
+.cmd-desc {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.5;
+  padding-left: 2px;
+}
+.cmd-examples {
+  margin-top: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.cmd-examples-title {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 14px;
+}
+.example-row {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+}
+.example-row:last-child { border-bottom: none; }
+.example-flag {
+  font-family: var(--mono);
+  color: var(--green);
+  font-size: .8rem;
+  white-space: nowrap;
+  min-width: 160px;
+}
+.example-desc { color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .howto-steps { flex-direction: column; }
+  .example-row { flex-direction: column; gap: 4px; }
+  .example-flag { min-width: auto; }
+}
+
+/* ========== GUIDE (non-tech) ========== */
+.guide-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+.guide-box > p {
+  color: var(--text-secondary);
+  font-size: .9rem;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.step-card {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px 20px;
+}
+.step-num {
+  position: absolute;
+  top: -10px; left: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  font-size: .7rem;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.step-num.s1 { background: var(--green-muted); color: var(--green); border: 1px solid var(--green-border); }
+.step-num.s2 { background: var(--blue-muted); color: var(--blue); border: 1px solid rgba(59,130,246,.3); }
+.step-num.s3 { background: rgba(168,85,247,.1); color: #a855f7; border: 1px solid rgba(168,85,247,.25); }
+.step-title {
+  font-size: .9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  margin-top: 4px;
+}
+.step-desc {
+  font-size: .8rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.step-desc strong { color: var(--text-secondary); font-weight: 600; }
+.step-desc code {
+  background: rgba(0,0,0,.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .85em;
+  color: var(--green);
+}
+.guide-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: rgba(245,158,11,.06);
+  border: 1px solid rgba(245,158,11,.15);
+  border-radius: var(--radius);
+  font-size: .82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.guide-footer svg { flex-shrink: 0; margin-top: 2px; color: var(--amber); }
+
+@media (max-width: 768px) {
+  .steps-grid { grid-template-columns: 1fr; }
+}
+
+/* ========== FOOTER ========== */
+footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+.footer-inner svg { color: var(--green); opacity: .6; }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .hero { padding: 56px 20px 40px; }
+  .hero h1 { font-size: 1.75rem; }
+  .hero .subtitle { font-size: 1rem; }
+  .check-grid { grid-template-columns: 1fr 1fr; }
+  .cmd-row { flex-direction: column; align-items: stretch; }
+  .cmd-row code { font-size: .78rem; }
+  .copy-btn { justify-content: center; }
+}
+@media (max-width: 480px) {
+  .hero h1 { font-size: 1.5rem; }
+  .check-grid { grid-template-columns: 1fr; }
+  .threat-meta { flex-direction: column; gap: 8px; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; transform: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== HERO ========== -->
+<div class="hero">
+  <div class="hero-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Air-gapped &bull; Zero external calls
+  </div>
+  <h1>Supply Chain <span class="accent">Scanner</span></h1>
+  <p class="subtitle">Self-hosted, PCI-DSS compliant npm supply chain threat detection for VeryPay infrastructure</p>
+  <div class="hero-divider"></div>
+</div>
+
+<div class="container">
+
+  <!-- ========== THREAT SUMMARY ========== -->
+  <section>
+    <div class="section-header">
+      <div class="icon-wrapper" style="background:var(--red-muted)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <h2>Threat Summary</h2>
+    </div>
+    <div class="threat-alert">
+      In <strong>June 2025</strong>, attackers published malicious versions of the <code>axios</code> HTTP client —
+      <strong>v1.14.1</strong> and <strong>v0.30.4</strong> — to npm. These packages contained a
+      <strong>Remote Access Trojan (RAT)</strong> that established reverse shells, exfiltrated environment variables
+      (API keys, database credentials), and persisted via OS-level mechanisms.
+      <div class="threat-meta">
+        <span class="threat-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          C2: sfrclak.com:8000
+        </span>
+        <span class="threat-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          IP: 142.11.206.73
+        </span>
+        <span class="threat-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Dropper: plain-crypto-js
+        </span>
+        <span class="threat-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Worm: Shai-Hulud
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ========== QUICK START ========== -->
+  <section>
+    <div class="section-header">
+      <div class="icon-wrapper" style="background:var(--green-muted)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <h2>Quick Start</h2>
+    </div>
+
+    <!-- How to run — 3 steps -->
+    <div class="howto-steps">
+      <div class="howto-step">
+        <div class="howto-num">1</div>
+        <div class="howto-text">
+          <strong>Open a terminal</strong><br>
+          macOS: press <span class="kbd">&#8984; Cmd</span> + <span class="kbd">Space</span>, type <strong>Terminal</strong>, press Enter.<br>
+          Windows: press <span class="kbd">Win</span> + <span class="kbd">X</span>, select <strong>PowerShell</strong>.
+        </div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">2</div>
+        <div class="howto-text">
+          <strong>Paste the command</strong><br>
+          Click the <strong>Copy</strong> button next to your OS below, go back to the terminal, <strong>right-click</strong> to paste, then press <span class="kbd">Enter</span>.
+        </div>
+      </div>
+      <div class="howto-step">
+        <div class="howto-num">3</div>
+        <div class="howto-text">
+          <strong>Read the result</strong><br>
+          The scanner will show <strong style="color:var(--green)">CLEAN</strong> or <strong style="color:var(--red)">INFECTED</strong>. If infected, follow the on-screen remediation steps.
+        </div>
+      </div>
+    </div>
+
+    <!-- Commands per OS -->
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 8 4 4-4 4"/><line x1="12" y1="16" x2="18" y2="16"/></svg>
+          macOS / Linux
+        </div>
+        <div class="cmd-row">
+          <code>curl -sSL https://scan.dev.verypay.io/scan.sh | bash</code>
+          <button class="copy-btn" onclick="copyCmd(this,'curl -sSL https://scan.dev.verypay.io/scan.sh | bash')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <div class="cmd-desc">Scans your home directory for compromised lockfiles, checks host IOCs, and exports detection rules. Takes ~5 seconds.</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg>
+          Linux Server (Docker + systemd + cron)
+        </div>
+        <div class="cmd-row">
+          <code>curl -sSL https://scan.dev.verypay.io/scan.sh | bash -s -- --server</code>
+          <button class="copy-btn" onclick="copyCmd(this,'curl -sSL https://scan.dev.verypay.io/scan.sh | bash -s -- --server')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <div class="cmd-desc">Same as above plus 4 extra checks: scans inside Docker containers, checks systemd services, crontabs, and journalctl logs for C2 activity.</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5L17.5 17.5M6.5 17.5L17.5 6.5"/><rect x="2" y="2" width="20" height="20" rx="3"/></svg>
+          Windows (PowerShell)
+        </div>
+        <div class="cmd-row">
+          <code>irm https://scan.dev.verypay.io/scan.ps1 | iex</code>
+          <button class="copy-btn" onclick="copyCmd(this,'irm https://scan.dev.verypay.io/scan.ps1 | iex')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <div class="cmd-desc">PowerShell equivalent. Checks Registry persistence, Windows RAT files (wt.exe, system.bat), DNS cache, and scheduled tasks.</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          CI / Pipeline Mode (JSON output)
+        </div>
+        <div class="cmd-row">
+          <code>curl -sSL https://scan.dev.verypay.io/scan.sh | bash -s -- --ci --project-dir .</code>
+          <button class="copy-btn" onclick="copyCmd(this,'curl -sSL https://scan.dev.verypay.io/scan.sh | bash -s -- --ci --project-dir .')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <div class="cmd-desc">Non-interactive mode for Jenkins/GitHub Actions. Outputs JSON only, scans current directory, returns exit code 1 if infected.</div>
+      </div>
+    </div>
+
+    <!-- Common flags & examples -->
+    <div class="cmd-examples">
+      <div class="cmd-examples-title">Common Options &amp; Examples</div>
+      <div class="example-row">
+        <span class="example-flag">--project-dir ~/Work</span>
+        <span class="example-desc">Only scan lockfiles under a specific directory instead of your entire home folder</span>
+      </div>
+      <div class="example-row">
+        <span class="example-flag">--server</span>
+        <span class="example-desc">Enable server mode — adds Docker, systemd, cron, and journalctl checks (Linux only)</span>
+      </div>
+      <div class="example-row">
+        <span class="example-flag">--auto-remediate</span>
+        <span class="example-desc">Automatically kill malicious processes, remove RAT files, and block C2 domain in /etc/hosts</span>
+      </div>
+      <div class="example-row">
+        <span class="example-flag">--json</span>
+        <span class="example-desc">Suppress terminal output, print only the JSON report to stdout (useful for piping to other tools)</span>
+      </div>
+      <div class="example-row">
+        <span class="example-flag">-y</span>
+        <span class="example-desc">Skip the confirmation prompt — useful for automation or when piping to bash</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ========== WHAT IT CHECKS ========== -->
+  <section>
+    <div class="section-header">
+      <div class="icon-wrapper" style="background:var(--blue-muted)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h2>16 Checks Across 4 Layers</h2>
+    </div>
+    <div class="check-grid">
+      <div class="check-card">
+        <div class="check-icon layer-1">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+        </div>
+        <div class="check-num">LAYER 1 &mdash; 5 checks</div>
+        <div class="check-title">Package Audit</div>
+        <div class="check-desc">Lockfile scanning, malicious version detection, dropper directory checks, npm cache analysis, install script anomalies</div>
+      </div>
+      <div class="check-card">
+        <div class="check-icon layer-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="check-num">LAYER 2 &mdash; 5 checks</div>
+        <div class="check-title">Host IOC Sweep</div>
+        <div class="check-desc">RAT files on disk, process scanning, network connections to C2, DNS cache inspection, persistence mechanisms</div>
+      </div>
+      <div class="check-card">
+        <div class="check-icon layer-3">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="check-num">LAYER 3 &mdash; 4 checks</div>
+        <div class="check-title">Forensic Artifacts</div>
+        <div class="check-desc">Hidden lockfile analysis, npm log forensics, shell history traces, Shai-Hulud worm detection</div>
+      </div>
+      <div class="check-card">
+        <div class="check-icon layer-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="check-num">LAYER 4 &mdash; 2 checks</div>
+        <div class="check-title">Content &amp; Export</div>
+        <div class="check-desc">YARA-equivalent pattern scan, Snort IDS rules and YARA rule export for infrastructure teams</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ========== PCI-DSS ========== -->
+  <section>
+    <div class="section-header">
+      <div class="icon-wrapper" style="background:rgba(168,85,247,.1)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+      </div>
+      <h2>PCI-DSS Compliance Mapping</h2>
+    </div>
+    <div class="pci-table-wrapper">
+      <table class="pci-table">
+        <thead><tr><th>Requirement</th><th>Description</th><th>Scanner Coverage</th></tr></thead>
+        <tbody>
+          <tr><td>5.2</td><td>Anti-malware mechanisms</td><td>IOC detection + YARA rules detect known RAT payloads</td></tr>
+          <tr><td>6.3.2</td><td>Software inventory</td><td>Lockfile audit inventories all third-party dependencies</td></tr>
+          <tr><td>6.5.4</td><td>Supply chain attack protection</td><td>Detects compromised packages and C2 callbacks</td></tr>
+          <tr><td>10.2</td><td>Audit trail for events</td><td>JSON report with timestamped check-by-check results</td></tr>
+          <tr><td>11.4</td><td>Intrusion detection</td><td>Exported Snort rules for network IDS deployment</td></tr>
+          <tr><td>11.5</td><td>File integrity monitoring</td><td>Content pattern scan detects malicious code in any path</td></tr>
+          <tr><td>12.10</td><td>Incident response plan</td><td>Auto-remediation steps with credential rotation checklist</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ========== NON-TECH GUIDE ========== -->
+  <section>
+    <div class="section-header">
+      <div class="icon-wrapper" style="background:rgba(245,158,11,.1)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <h2>Not a Developer? Here's What to Do</h2>
+    </div>
+    <div class="guide-box">
+      <p>You don't need to run the scanner yourself. Follow these steps to make sure your machine is checked by the security team.</p>
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-num s1">1</span>
+          <div class="step-title">Ask Your Team Lead</div>
+          <div class="step-desc">
+            Forward this page to your <strong>Team Lead</strong> or <strong>DevOps engineer</strong> and ask them to run the scanner on your machine. They will open a terminal and paste one command &mdash; it takes less than 10 seconds.
+          </div>
+        </div>
+        <div class="step-card">
+          <span class="step-num s2">2</span>
+          <div class="step-title">Check the Result</div>
+          <div class="step-desc">
+            After the scan finishes, the screen will show one of two results:<br>
+            <strong style="color:var(--green)">CLEAN</strong> &mdash; your machine is safe, no action needed.<br>
+            <strong style="color:var(--red)">INFECTED</strong> &mdash; follow the on-screen steps or <strong>disconnect from the network immediately</strong> and contact the security team.
+          </div>
+        </div>
+        <div class="step-card">
+          <span class="step-num s3">3</span>
+          <div class="step-title">If You Suspect Something</div>
+          <div class="step-desc">
+            If your machine is acting strange &mdash; unusual slowness, unfamiliar processes, unexpected network activity &mdash; <strong>do not wait for a scan</strong>. Disconnect from the network and report to the security team immediately via Teams or email.
+          </div>
+        </div>
+      </div>
+      <div class="guide-footer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <strong style="color:var(--amber)">Important:</strong> If you recently installed or updated any npm packages and received the result <strong style="color:var(--red)">INFECTED</strong>, assume all credentials on your machine are compromised. Change your passwords, revoke API keys, and rotate SSH keys. Your team lead will guide you through the full checklist.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ========== REPORT VIEWER ========== -->
+  <section>
+    <div class="cta-box">
+      <a href="report.html" class="cta-link">
+        View Scan Report
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <p>Client-side JSON viewer — no data leaves your browser</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Internal use only &bull; No data is sent externally &bull; VeryPay Security Team
+  </div>
+</footer>
+
+<script>
+function copyCmd(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    var svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    btn.innerHTML = svg + ' Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      var copySvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      btn.innerHTML = copySvg + ' Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>

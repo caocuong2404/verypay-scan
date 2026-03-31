@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: base
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scan-static-files
+  namespace: base
+  labels:
+    app: supply-chain-scanner
+data:
+  ioc-db.json: |
+    {
+      "version": "2026-03-31",
+      "packages": [
+        {"name": "axios", "versions": ["1.14.1", "0.30.4"], "threat": "RAT dropper via plain-crypto-js", "severity": "critical"},
+        {"name": "plain-crypto-js", "versions": ["*"], "threat": "Cross-platform RAT", "severity": "critical"},
+        {"name": "@ctrl/tinycolor", "versions": ["4.1.1", "4.1.2"], "threat": "Shai-Hulud credential stealer", "severity": "critical"}
+      ]
+    }
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Security headers (PCI-DSS)
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+        # Serve .sh and .ps1 as plain text
+        location ~* \.(sh|ps1)$ {
+            default_type "text/plain; charset=utf-8";
+        }
+
+        # Cache static assets
+        location ~* \.(html|css|js|json)$ {
+            expires 1h;
+        }
+
+        # Cache tools longer
+        location /tools/ {
+            expires 24h;
+        }
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+
+        # Health check
+        location /healthz {
+            return 200 'ok';
+            add_header Content-Type text/plain;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supply-chain-scanner
+  namespace: base
+  labels:
+    app: supply-chain-scanner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supply-chain-scanner
+  template:
+    metadata:
+      labels:
+        app: supply-chain-scanner
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+            - name: scan-files
+              mountPath: /usr/share/nginx/html/scan.sh
+              subPath: scan.sh
+            - name: scan-files
+              mountPath: /usr/share/nginx/html/scan.ps1
+              subPath: scan.ps1
+            - name: scan-files
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+            - name: scan-files
+              mountPath: /usr/share/nginx/html/report.html
+              subPath: report.html
+            - name: static-files
+              mountPath: /usr/share/nginx/html/ioc-db.json
+              subPath: ioc-db.json
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: scan-static-files
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+        - name: scan-files
+          configMap:
+            name: scan-content-files
+        - name: static-files
+          configMap:
+            name: scan-static-files
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supply-chain-scanner
+  namespace: base
+  labels:
+    app: supply-chain-scanner
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: supply-chain-scanner
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: supply-chain-scanner
+  namespace: base
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: scan.dev.verypay.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: supply-chain-scanner
+                port:
+                  number: 80

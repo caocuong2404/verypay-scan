@@ -1,0 +1,48 @@
+scan.dev.verypay.io {
+    root * /srv/scan.dev.verypay.io
+    file_server
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    # Correct MIME types for scripts
+    @shellscript path *.sh
+    header @shellscript Content-Type "text/plain; charset=utf-8"
+
+    @powershell path *.ps1
+    header @powershell Content-Type "text/plain; charset=utf-8"
+
+    # Cache static assets
+    @static path *.html *.css *.js
+    header @static Cache-Control "public, max-age=3600"
+
+    # Cache tools longer
+    @tools path /tools/*
+    header @tools Cache-Control "public, max-age=86400"
+
+    # Serve scan.sh and scan.ps1 from root
+    handle /scan.sh {
+        root * /srv/scan.dev.verypay.io
+        rewrite * /scan.sh
+        file_server
+    }
+
+    handle /scan.ps1 {
+        root * /srv/scan.dev.verypay.io
+        rewrite * /scan.ps1
+        file_server
+    }
+
+    # Log access
+    log {
+        output file /var/log/caddy/scan.dev.verypay.io.log
+        format json
+    }
+}

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Report Viewer — VeryPay Supply Chain Scanner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--blue);text-decoration:none}
+.container{max-width:960px;margin:0 auto;padding:0 20px}
+
+header{text-align:center;padding:40px 20px 30px;border-bottom:1px solid var(--border)}
+header h1{font-size:1.6rem}
+header p{color:var(--text-muted);margin-top:4px;font-size:.95rem}
+header .back{display:inline-block;margin-top:10px;font-size:.85rem}
+
+/* Input Area */
+.input-section{padding:40px 0}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:40px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+.drop-zone.dragover{border-color:var(--blue);background:rgba(88,166,255,.05)}
+.drop-zone p{color:var(--text-muted);margin-bottom:12px}
+.drop-zone .or{color:var(--text-muted);font-size:.85rem;margin:12px 0}
+textarea{width:100%;min-height:160px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:.85rem;padding:14px;resize:vertical;margin-top:12px}
+.btn{display:inline-block;background:var(--blue);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:.95rem;cursor:pointer;font-weight:600;transition:opacity .2s}
+.btn:hover{opacity:.85}
+.btn-row{text-align:center;margin-top:16px}
+input[type=file]{display:none}
+
+/* Error */
+.error-msg{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);border-radius:8px;padding:14px 18px;margin-top:16px;font-size:.9rem;display:none}
+
+/* Report */
+#report{display:none;padding-bottom:60px}
+section.rpt{padding:24px 0;border-bottom:1px solid var(--border)}
+section.rpt:last-child{border-bottom:none}
+h2.rpt-title{font-size:1.2rem;margin-bottom:14px;color:var(--text-muted)}
+
+/* Verdict */
+.verdict{text-align:center;padding:32px}
+.verdict-badge{display:inline-block;font-size:2rem;font-weight:800;padding:12px 48px;border-radius:12px;letter-spacing:1px}
+.verdict-badge.clean{background:rgba(63,185,80,.15);color:var(--green);border:2px solid var(--green)}
+.verdict-badge.infected{background:rgba(248,81,73,.15);color:var(--red);border:2px solid var(--red)}
+
+/* System Info */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.info-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px}
+.info-item .label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.info-item .value{font-size:1rem;margin-top:2px;word-break:break-all}
+
+/* Checks Table */
+.checks-table{width:100%;border-collapse:collapse;font-size:.9rem}
+.checks-table th,.checks-table td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border)}
+.checks-table th{color:var(--text-muted);background:var(--surface);font-weight:600;position:sticky;top:0}
+.checks-table tr:hover td{background:rgba(255,255,255,.02)}
+.icon-pass{color:var(--green)}
+.icon-fail{color:var(--red)}
+.icon-warn{color:var(--yellow)}
+.icon-skip{color:var(--text-muted)}
+
+/* Findings */
+.finding-card{background:rgba(248,81,73,.06);border:1px solid rgba(248,81,73,.25);border-radius:8px;padding:16px;margin-bottom:12px}
+.finding-card h4{color:var(--red);margin-bottom:6px}
+.finding-card p,.finding-card pre{font-size:.85rem;color:var(--text-muted)}
+.finding-card pre{background:var(--bg);padding:10px;border-radius:6px;overflow-x:auto;margin-top:6px;font-family:var(--mono)}
+
+/* Remediation */
+.remed-list{list-style:none;counter-reset:remed}
+.remed-list li{counter-increment:remed;padding:10px 0 10px 36px;border-bottom:1px solid var(--border);position:relative;font-size:.95rem}
+.remed-list li::before{content:counter(remed);position:absolute;left:0;top:10px;width:24px;height:24px;background:var(--red);color:#fff;border-radius:50%;text-align:center;line-height:24px;font-size:.8rem;font-weight:700}
+
+/* Rules */
+.rules-list{font-family:var(--mono);font-size:.85rem}
+.rules-list li{padding:4px 0;color:var(--text-muted)}
+
+/* Metadata */
+.meta-row{display:flex;gap:24px;flex-wrap:wrap}
+.meta-item{font-size:.9rem}
+.meta-item span{color:var(--text-muted)}
+
+footer{text-align:center;padding:24px 20px;color:var(--text-muted);font-size:.85rem;border-top:1px solid var(--border)}
+
+@media(max-width:600px){
+  .info-grid{grid-template-columns:1fr 1fr}
+  .verdict-badge{font-size:1.4rem;padding:10px 28px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Scan Report Viewer</h1>
+  <p>Client-side viewer — no data leaves your browser</p>
+  <a class="back" href="index.html">← Back to Scanner</a>
+</header>
+
+<div class="container">
+
+  <!-- Input Section -->
+  <div class="input-section" id="inputSection">
+    <div class="drop-zone" id="dropZone">
+      <p><strong>Drop your JSON report here</strong></p>
+      <p class="or">— or —</p>
+      <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+      <input type="file" id="fileInput" accept=".json,application/json">
+    </div>
+    <textarea id="jsonInput" placeholder="Or paste your JSON report here..."></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="parseReport()">Render Report</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Rendered Report -->
+  <div id="report">
+
+    <!-- Verdict -->
+    <section class="rpt" id="verdictSection">
+      <div class="verdict">
+        <div class="verdict-badge" id="verdictBadge"></div>
+      </div>
+    </section>
+
+    <!-- System Info -->
+    <section class="rpt" id="sysInfoSection">
+      <h2 class="rpt-title">System Information</h2>
+      <div class="info-grid" id="sysInfoGrid"></div>
+    </section>
+
+    <!-- Checks -->
+    <section class="rpt" id="checksSection">
+      <h2 class="rpt-title">Check Results</h2>
+      <div style="overflow-x:auto">
+        <table class="checks-table">
+          <thead><tr><th></th><th>Check</th><th>Result</th><th>Details</th></tr></thead>
+          <tbody id="checksBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Findings -->
+    <section class="rpt" id="findingsSection" style="display:none">
+      <h2 class="rpt-title">⚠️ Findings</h2>
+      <div id="findingsContainer"></div>
+    </section>
+
+    <!-- Remediation -->
+    <section class="rpt" id="remediationSection" style="display:none">
+      <h2 class="rpt-title">🛠️ Remediation Steps</h2>
+      <ol class="remed-list" id="remediationList"></ol>
+    </section>
+
+    <!-- Rules -->
+    <section class="rpt" id="rulesSection" style="display:none">
+      <h2 class="rpt-title">📦 Exported Rules</h2>
+      <ul class="rules-list" id="rulesList"></ul>
+    </section>
+
+    <!-- Metadata -->
+    <section class="rpt" id="metaSection">
+      <h2 class="rpt-title">Scan Metadata</h2>
+      <div class="meta-row" id="metaRow"></div>
+    </section>
+
+  </div>
+</div>
+
+<footer>🔐 Internal use only. No data is sent externally. &bull; VeryPay Security Team</footer>
+
+<script>
+var dropZone = document.getElementById('dropZone');
+var fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  var file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+fileInput.addEventListener('change', function() { if (fileInput.files[0]) readFile(fileInput.files[0]); });
+
+function readFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('jsonInput').value = e.target.result;
+    parseReport();
+  };
+  reader.readAsText(file);
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
+
+function esc(s) {
+  if (s == null) return '';
+  var d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function statusIcon(status) {
+  var s = String(status).toLowerCase();
+  if (s === 'pass' || s === 'clean' || s === 'ok') return '<span class="icon-pass">✅</span>';
+  if (s === 'fail' || s === 'infected' || s === 'found') return '<span class="icon-fail">❌</span>';
+  if (s === 'warn' || s === 'warning') return '<span class="icon-warn">⚠️</span>';
+  return '<span class="icon-skip">⏭️</span>';
+}
+
+function parseReport() {
+  hideError();
+  var raw = document.getElementById('jsonInput').value.trim();
+  if (!raw) { showError('Please paste or upload a JSON report.'); return; }
+
+  var data;
+  try { data = JSON.parse(raw); } catch(e) { showError('Invalid JSON: ' + e.message); return; }
+
+  document.getElementById('inputSection').style.display = 'none';
+  document.getElementById('report').style.display = 'block';
+
+  renderVerdict(data);
+  renderSystemInfo(data);
+  renderChecks(data);
+  renderFindings(data);
+  renderRemediation(data);
+  renderRules(data);
+  renderMeta(data);
+}
+
+function renderVerdict(d) {
+  var verdict = (d.verdict || d.result || d.status || 'UNKNOWN').toUpperCase();
+  var badge = document.getElementById('verdictBadge');
+  var isClean = verdict === 'CLEAN' || verdict === 'PASS' || verdict === 'OK';
+  badge.textContent = isClean ? '✅ CLEAN' : '🚨 ' + verdict;
+  badge.className = 'verdict-badge ' + (isClean ? 'clean' : 'infected');
+}
+
+function renderSystemInfo(d) {
+  var info = d.system_info || d.systemInfo || d.system || {};
+  var grid = document.getElementById('sysInfoGrid');
+  grid.innerHTML = '';
+  var fields = {
+    hostname: 'Hostname', os: 'OS', platform: 'Platform', arch: 'Architecture',
+    kernel: 'Kernel', node_version: 'Node Version', nodeVersion: 'Node Version',
+    npm_version: 'npm Version', npmVersion: 'npm Version', user: 'User', shell: 'Shell'
+  };
+  var found = false;
+  for (var k in fields) {
+    var v = info[k];
+    if (v) { found = true; grid.innerHTML += '<div class="info-item"><div class="label">' + esc(fields[k]) + '</div><div class="value">' + esc(v) + '</div></div>'; }
+  }
+  if (!found) {
+    for (var k2 in info) {
+      grid.innerHTML += '<div class="info-item"><div class="label">' + esc(k2) + '</div><div class="value">' + esc(info[k2]) + '</div></div>';
+    }
+  }
+  document.getElementById('sysInfoSection').style.display = grid.innerHTML ? '' : 'none';
+}
+
+function renderChecks(d) {
+  var checks = d.checks || d.results || d.audit || [];
+  var body = document.getElementById('checksBody');
+  body.innerHTML = '';
+  if (!Array.isArray(checks) || checks.length === 0) { document.getElementById('checksSection').style.display = 'none'; return; }
+  document.getElementById('checksSection').style.display = '';
+  checks.forEach(function(c) {
+    var st = c.status || c.result || 'unknown';
+    var name = c.name || c.check || c.title || c.id || '';
+    var detail = c.detail || c.details || c.message || c.description || '';
+    if (typeof detail === 'object') detail = JSON.stringify(detail);
+    body.innerHTML += '<tr><td>' + statusIcon(st) + '</td><td>' + esc(name) + '</td><td>' + esc(st) + '</td><td style="color:var(--text-muted);font-size:.85rem">' + esc(detail) + '</td></tr>';
+  });
+}
+
+function renderFindings(d) {
+  var findings = d.findings || d.threats || d.issues || [];
+  var container = document.getElementById('findingsContainer');
+  var section = document.getElementById('findingsSection');
+  container.innerHTML = '';
+  if (!Array.isArray(findings) || findings.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  findings.forEach(function(f) {
+    var title = f.title || f.name || f.type || 'Finding';
+    var desc = f.description || f.detail || f.message || '';
+    var evidence = f.evidence || f.path || f.file || '';
+    var html = '<div class="finding-card"><h4>' + esc(title) + '</h4>';
+    if (desc) html += '<p>' + esc(desc) + '</p>';
+    if (evidence) html += '<pre>' + esc(typeof evidence === 'object' ? JSON.stringify(evidence, null, 2) : evidence) + '</pre>';
+    html += '</div>';
+    container.innerHTML += html;
+  });
+}
+
+function renderRemediation(d) {
+  var steps = d.remediation || d.remediation_steps || d.remediationSteps || [];
+  var list = document.getElementById('remediationList');
+  var section = document.getElementById('remediationSection');
+  list.innerHTML = '';
+  if (!Array.isArray(steps) || steps.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  steps.forEach(function(s) {
+    var text = typeof s === 'string' ? s : (s.step || s.description || s.action || JSON.stringify(s));
+    list.innerHTML += '<li>' + esc(text) + '</li>';
+  });
+}
+
+function renderRules(d) {
+  var rules = d.exported_rules || d.exportedRules || d.rules_paths || d.rules || null;
+  var list = document.getElementById('rulesList');
+  var section = document.getElementById('rulesSection');
+  list.innerHTML = '';
+  if (!rules) { section.style.display = 'none'; return; }
+  var paths = [];
+  if (Array.isArray(rules)) {
+    rules.forEach(function(r) { paths.push(typeof r === 'string' ? r : (r.path || r.file || JSON.stringify(r))); });
+  } else if (typeof rules === 'object') {
+    for (var k in rules) { paths.push(k + ': ' + rules[k]); }
+  }
+  if (paths.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  paths.forEach(function(p) { list.innerHTML += '<li>' + esc(p) + '</li>'; });
+}
+
+function renderMeta(d) {
+  var row = document.getElementById('metaRow');
+  row.innerHTML = '';
+  var items = [];
+  if (d.scan_date || d.scanDate || d.date || d.timestamp) items.push(['Date', d.scan_date || d.scanDate || d.date || d.timestamp]);
+  if (d.duration || d.scan_duration || d.elapsed) items.push(['Duration', d.duration || d.scan_duration || d.elapsed]);
+  if (d.scope || d.scan_scope || d.project_dir) items.push(['Scope', d.scope || d.scan_scope || d.project_dir]);
+  if (d.scanner_version || d.version) items.push(['Version', d.scanner_version || d.version]);
+  if (d.mode) items.push(['Mode', d.mode]);
+  if (items.length === 0) { document.getElementById('metaSection').style.display = 'none'; return; }
+  document.getElementById('metaSection').style.display = '';
+  items.forEach(function(i) { row.innerHTML += '<div class="meta-item"><span>' + esc(i[0]) + ':</span> ' + esc(i[1]) + '</div>'; });
+}
+</script>
+</body>
+</html>
